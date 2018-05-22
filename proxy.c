@@ -182,7 +182,7 @@ void doit(int fd, struct sockaddr_in *csock)
 
     Close(clientfd);
 
-    fprintf(">> Jarvis: Connection Closed.");
+    fprintf(log, ">> Jarvis: Connection Closed.");
     // log
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
