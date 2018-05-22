@@ -82,11 +82,11 @@ void doit(int fd, struct sockaddr_in *csock)
     Rio_readinitb(&crio, fd);
     Rio_readlineb(&crio, buf, MAXLINE);
     fprintf(log, ">> Jarvis: Request Headers\n");
-    fprintf(log, ">> Jarvis: %s", buf);
+    fprintf(log, ">> %s", buf);
     fflush(log);
     sscanf(buf, "%s %s %s", method, uri, version);
     fprintf(log, "%s %s %s\n", method, uri, version);
-    fprintf(log, ">> Jarvis: uri = %s\n", uri);
+    // fprintf(log, ">> Jarvis: uri = %s\n", uri);
     fflush(log);
     
     char server_hostname[MAXLINE], server_pathname[MAXLINE], server_port[MAXLINE];
@@ -138,7 +138,7 @@ void doit(int fd, struct sockaddr_in *csock)
             // request body
             fprintf(log, ">> %s", buf);
             fflush(log);
-            
+
             Rio_writen(clientfd, buf, strlen(buf));
             Rio_readlineb(&crio, buf, MAXLINE);
         }
@@ -147,9 +147,14 @@ void doit(int fd, struct sockaddr_in *csock)
 
     int flow = 0;
     body = 0;
+    fprintf(log, "\n<<<<< Receive response from server.");
     /* Forward response headers to client */
     Rio_readlineb(&srio, buf, MAXLINE);
     while(strcmp(buf, "\r\n")) {
+        // log response headers
+        fprintf(log, "%s", buf);
+        fflush(log);
+
         Rio_writen(fd, buf, strlen(buf));
         if (strncasecmp(buf, "Content-length", 14) == 0) {
             body = 1;
@@ -161,8 +166,13 @@ void doit(int fd, struct sockaddr_in *csock)
     // Forward Response Body to client if any
     if (body) {
         Rio_readlineb(&srio, buf, MAXLINE);
+        // log response body
+        fprintf(log, "\n<Response body>\n");
         while (strcmp(buf, "\r\n"))
         {
+            fprintf(log, "%s", buf);
+            fflush(log);
+
             Rio_writen(fd, buf, strlen(buf));
             flow += strlen(buf);
             Rio_readlineb(&srio, buf, MAXLINE);
@@ -172,6 +182,7 @@ void doit(int fd, struct sockaddr_in *csock)
 
     Close(clientfd);
 
+    fprintf(">> Jarvis: Connection Closed.");
     // log
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
