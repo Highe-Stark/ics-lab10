@@ -1,0 +1,16 @@
+### ignore all ###
+*
+
+### Unignore all with extensions ###
+!*.*
+
+### Object file ###
+*.o
+
+### executable file ###
+*.exe
+*.out
+
+### log ###
+*.log
+
