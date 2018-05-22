@@ -120,6 +120,10 @@ void doit(int fd, struct sockaddr_in *csock)
     }
     fprintf(log, ">> Jarvis: forward request line to server\n%s\n", buf);
     while (strcmp(buf, "\r\n")) {
+        // log request to server
+        fprintf(log, ">> %s", buf);
+        fflush(log);
+
         Rio_writen(clientfd, buf, strlen(buf));
         Rio_readlineb(&crio, buf, MAXLINE);
     }
@@ -128,7 +132,13 @@ void doit(int fd, struct sockaddr_in *csock)
     /* Forward request body to server if any */
     if (body) {
         Rio_readlineb(&crio, buf, MAXLINE);
+        // request body
+        fprintf(log, "\n");
         while (strcmp(buf, "\r\n")) {
+            // request body
+            fprintf(log, ">> %s", buf);
+            fflush(log);
+            
             Rio_writen(clientfd, buf, strlen(buf));
             Rio_readlineb(&crio, buf, MAXLINE);
         }
