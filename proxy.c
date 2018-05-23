@@ -227,26 +227,14 @@ void doit(int fd, struct sockaddr_in *csock)
     fclose(log);
 }
 
-/* 
- * get_cnt_len - get response content length
-int get_cnt_len(const char *res, long *len) 
-{
-    char *cnt_len = "Content-length";
-    if (strncasecmp(res, cnt_len, strlen(cnt_len)) != 0) {
-        return -1;
-    }
-    return 0;
-}
- */
-
 /*
- * Rio_readn_w - wrapper for Rio_readn
+ * Rio_readn_w - wrapper for rio_readn
  * If error detected, return 0;
  * return 0 encountered EOF
  */
 int Rio_readn_w(int fd, void *buf, size_t maxsize, size_t *size) 
 {
-    ssize_t stat = Rio_readn(fd, buf, maxsize);
+    ssize_t stat = rio_readn(fd, buf, maxsize);
     if (stat == -1) {
         *size = 0;
         fprintf(stderr, "Read %d bytes failed", (int) maxsize);
@@ -262,12 +250,32 @@ int Rio_readn_w(int fd, void *buf, size_t maxsize, size_t *size)
 }
 
 /* 
- * Rio_readlineb_w - wrapper for Rio_readlineb
+ * Rio_readnb_w - wrapper for rio_readnb
+ * If error detected, return 0;
+ * return 0 if encounter EOF
+ */
+int Rio_readnb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size) 
+{
+    ssize_t stat = rio_readnb(rp, buf, maxsize);
+    if (stat == -1) {
+        *size = 0;
+        return -1;
+    } else if (stat == 0) {
+        *size = stat;
+        return 0;
+    } else {
+        *size = stat;
+        return 1;
+    }
+}
+
+/* 
+ * Rio_readlineb_w - wrapper for rio_readlineb
  * If error detected, or encouter EOF, return 0
  */
 int Rio_readlineb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size)
 {
-    ssize_t stat = Rio_readlineb(rp, buf, maxsize);
+    ssize_t stat = rio_readlineb(rp, buf, maxsize);
     if (stat == -1) {
         *size = 0;
         fprintf(stderr, "Readline failed.");
@@ -285,7 +293,7 @@ int Rio_readlineb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size)
 }
 
 /* 
- * Rio_writen_w - wrapper for Rio_writen
+ * Rio_writen_w - wrapper for rio_writen
  * If error detected, return 0;
  * if normal, return 1;
  */
@@ -303,21 +311,6 @@ int Rio_writen_w(int fd, void *buf, size_t n, size_t *size)
         return 1;
     }
 }
-
-/* 
- * read_requesthdrs - get request Headers and display
- *
-void read_requesthdrs(rio_t *rp) {
-    char buf[MAXLINE];
-
-    Rio_readlineb(rp, buf, MAXLINE);
-    while (strcmp(buf, "/r/n")) {
-        Rio_readlineb(rp, buf, MAXLINE);
-        fprintf(stdout, ">> Jarvis: %s", buf);
-    }
-    return;
-}
- */
 
 /*
  * parse_uri - URI parser
