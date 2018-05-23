@@ -46,9 +46,9 @@ int main(int argc, char **argv)
 int proxy(char *portstr)
 {
     // redirect stderr and stdout to file
-    int stdfile = Open("std.txt", O_CREAT | O_APPEND, DEF_MODE);
-    dup2(stdfile, 1);
-    dup2(stdfile, 2);
+    // int stdfile = Open("std.txt", O_CREAT | O_APPEND, DEF_MODE);
+    // dup2(stdfile, 1);
+    // dup2(stdfile, 2);
 
     int connfd;
     char hostname[MAXLINE], port[MAXLINE];
@@ -73,7 +73,7 @@ int proxy(char *portstr)
     }
 
     // Close stderr.txt
-    Close(stdfile);
+    // Close(stdfile);
     return 0;
 }
 
