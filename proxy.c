@@ -187,16 +187,23 @@ void doit(int fd, struct sockaddr_in *csock)
         flow += actsize;
     }
 
+    // fprintf(log, ">> bodysize : %d\n", bodysize);
+
     // Forward Response Body to client if any
     if (bodysize > 0) {
         char body[MAXBUF] = "\0";
         int readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
         // log response body
         fprintf(log, "<Response body>\n");
+        fflush(log);
         while (bodysize > 0)
         {
             res = Rio_readn_w(serverfd, body, readsize, &actsize);
-            if (res == -1) break;
+            if (res == -1) {
+                fprintf(log, "! Rio_readn_w Error !\n%s\n", body);
+                fflush(log);
+                break;
+            }
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
             fprintf(log, "%s", body);
