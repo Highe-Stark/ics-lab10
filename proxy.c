@@ -125,12 +125,12 @@ void doit(int fd, struct sockaddr_in *csock)
     Rio_readinitb(&srio, clientfd);
 
     /* Forward request headers to server */
-    int body = 1;
+    int bodysize = 0;
     sprintf(buf, "%s /%s %s\r\n", method, server_pathname, version);
     if (strncasecmp(method, "GET", 3) == 0) {
-        body = 0;
+        bodysize = 0;
     }
-    fprintf(log, ">>>>> Forward request line to server\n%s", buf);
+    fprintf(log, ">>>>> Forward request line to server\n");
     while (strcmp(buf, "\r\n") && res == 1 ) {
         // log request to server
         fprintf(log, "%s", buf);
@@ -138,31 +138,39 @@ void doit(int fd, struct sockaddr_in *csock)
 
         res = Rio_writen_w(clientfd, buf, strlen(buf), &actsize);
         if (res == -1) break;
-        if (strncasecmp(buf, "Content-length", 14) == 0) body = 1;
+        if (strncasecmp(buf, "Content-Length", 14) == 0) {
+            char cnt[20];
+            sscanf(buf, "%s: %d", cnt, &bodysize);
+        }
         res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
     }
     res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
 
     /* Forward request body to server if any */
-    if (body) {
-        res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
+    if (bodysize > 0) {
+        char body[MAXBUF];
+        int readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
+        res = 1;
         // request body
         fprintf(log, "\n");
-        while (strcmp(buf, "\r\n") && res == 1) {
+        while (bodysize > 0 && res == 1) {
+            res = Rio_readn_w(fd, body, readsize, &actsize);
+            if (res == -1) {
+                fprintf(log, "Rio_readn_w error\n");
+            }
+            bodysize -= readsize;
             // request body
-            fprintf(log, ">> %s", buf);
+            fprintf(log, ">> %s", body);
             fflush(log);
 
-            res = Rio_writen_w(clientfd, buf, strlen(buf), &actsize);
-            if (res == -1) break;
-            res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
+            res = Rio_writen_w(clientfd, body, readsize, &actsize);
         }
         res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
     }
 
     int flow = 0;
-    body = 0;
-    fprintf(log, "\n<<<<< Receive response from server.");
+    bodysize = 0;
+    fprintf(log, "\n<<<<< Receive response from server.\n");
     /* Forward response headers to client */
     res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize);
     while(strcmp(buf, "\r\n") && res == 1) {
@@ -172,30 +180,31 @@ void doit(int fd, struct sockaddr_in *csock)
 
         res = Rio_writen_w(fd, buf, strlen(buf), &actsize);
         if (res == -1) break;
-        if (strncasecmp(buf, "Content-length", 14) == 0) {
-            body = 1;
+        if (strncasecmp(buf, "Content-Length", 14) == 0) {
+            char cnt[20];
+            sscanf(buf, "%s: %d", cnt, &bodysize);
         }
         flow += actsize;
         res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize);
     }
     res = Rio_writen_w(fd, "\r\n", strlen("\r\n"), &actsize);
     // Forward Response Body to client if any
-    if (body) {
-        char body[MAXBUF];
-        res = Rio_readn_w(srio.rio_fd, body, MAXBUF, &actsize);
-        // res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize);
+    if (bodysize > 0) {
+        char body[MAXBUF] = "\0";
+        int readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
         // log response body
         fprintf(log, "\n<Response body>\n");
-        while (res == 1)
+        while (strcmp(body, "\r\n") && bodysize > 0)
         {
+            res = Rio_readn_w(clientfd, body, readsize, &actsize);
+            if (res == -1) break;
+            bodysize -= readsize;
+            readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
             fprintf(log, "%s", body);
             fflush(log);
 
             res = Rio_writen_w(fd, body, actsize, &actsize);
-            if (res == -1) break;
             flow += actsize;
-            res = Rio_readn_w(srio.rio_fd, body, MAXBUF, &actsize);
-            // res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize);
         }
         res = Rio_writen_w(fd, "\r\n", strlen("\r\n"), &actsize);
     }
