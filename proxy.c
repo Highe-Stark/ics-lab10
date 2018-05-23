@@ -136,13 +136,13 @@ void doit(int fd, struct sockaddr_in *csock)
         fprintf(log, "%s", buf);
         fflush(log);
 
-        res = Rio_writen_w(clientfd, buf, strlen(buf), &actsize);
-        if (res == -1) break;
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             char cnt[20];
-            sscanf(buf, "%s %d", cnt, &bodysize);
-            bodysize = atoi(buf + 16);
+            sscanf(buf, "%w: %d", cnt, &bodysize);
         }
+
+        res = Rio_writen_w(clientfd, buf, strlen(buf), &actsize);
+        if (res == -1) break;
         res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
     }
     res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
@@ -180,14 +180,14 @@ void doit(int fd, struct sockaddr_in *csock)
         fprintf(log, "%s", buf);
         fflush(log);
 
-        res = Rio_writen_w(fd, buf, strlen(buf), &actsize);
-        // if (res == -1) break;
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             char cnt[20];
-            sscanf(buf, "%s %d", cnt, &bodysize);
-            // bodysize = atoi(buf + 16);
+            sscanf(buf, "%w: %d", cnt, &bodysize);
             fprintf(log, ">Parsing Content-Length > cnt: %s > bodysize: %d\n", cnt, bodysize);
         }
+
+        res = Rio_writen_w(fd, buf, strlen(buf), &actsize);
+        if (res == -1) break;
         flow += actsize;
         res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize);
     }
