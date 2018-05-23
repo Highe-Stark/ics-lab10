@@ -82,47 +82,40 @@ int proxy(char *portstr)
  */
 void doit(int fd, struct sockaddr_in *csock)
 {
+    int clientfd = fd;
     FILE *log = fopen("proxy.log", "a+");
     fprintf(log, "Hey, I am alive! Accepted connection\n");
     
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
-    rio_t crio;                            // client rio
+    rio_t crio;             // client rio
 
     size_t actsize = 0;     // actual size
     int res = 0;
     /* Read request line and headers */
-    Rio_readinitb(&crio, fd);
+    Rio_readinitb(&crio, clientfd);
     if ((res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize)) == -1){
         fprintf(stderr, "Rio_readlineb_w error");
         return;
     }
     
-    fprintf(log, ">> Jarvis: Request Headers\n");
-    fprintf(log, ">> %s", buf);
-    fflush(log);
     sscanf(buf, "%s %s %s", method, uri, version);
+    fprintf(log, ">> Jarvis: Request Headers\n>> %s %s %s\n", method, uri, version);
+    fflush(log);
     
     char server_hostname[MAXLINE], server_pathname[MAXLINE], server_port[MAXLINE];
     if (parse_uri(uri, server_hostname, server_pathname, server_port)) {
         char serr[MAXLINE];
         sprintf(serr, "%s 404 NOT FOUND\r\n\r\n", version);
-        res = Rio_writen_w(fd, serr, strlen(serr), &actsize);
+        res = Rio_writen_w(clientfd, serr, strlen(serr), &actsize);
         fprintf(log, ">> Jarvis: Parse uri error\n");
         fclose(log);
         return;
     }
-    if (server_hostname == NULL || server_port == NULL) {
-        fprintf(log, ">> Jarvis: Invalid server socket.\n");
-        char serr[MAXLINE];
-        sprintf(serr, "%s 404 NOT FOUND\r\n\r\n", version);
-        res = Rio_writen_w(fd, serr, strlen(serr), &actsize);
-        fclose(log);
-        return;
-    }
+
     /* connect to server */
-    int clientfd = Open_clientfd(server_hostname, server_port);
-    rio_t srio;   // server rio
-    Rio_readinitb(&srio, clientfd);
+    int serverfd = Open_clientfd(server_hostname, server_port);
+    rio_t srio;            // server rio
+    Rio_readinitb(&srio, serverfd);
 
     /* Forward request headers to server */
     int bodysize = 0;
@@ -137,83 +130,85 @@ void doit(int fd, struct sockaddr_in *csock)
         fflush(log);
 
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
-            char cnt[20];
-            sscanf(buf, "%w: %d", cnt, &bodysize);
+            sscanf(buf, "Content-Length: %d", &bodysize);
         }
 
-        res = Rio_writen_w(clientfd, buf, strlen(buf), &actsize);
+        res = Rio_writen_w(serverfd, buf, strlen(buf), &actsize);
         if (res == -1) break;
         res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
     }
-    res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
+    res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
 
     /* Forward request body to server if any */
     if (bodysize > 0) {
         char body[MAXBUF] = "\0";
-        int readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
+        int readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
         res = 1;
         // request body
-        fprintf(log, "\n");
+        fprintf(log, "<Request Body>\n");
         while (bodysize > 0 && res == 1) {
-            res = Rio_readn_w(fd, body, readsize, &actsize);
+            res = Rio_readn_w(clientfd, body, readsize, &actsize);
             if (res == -1) {
                 fprintf(log, "Rio_readn_w error\n");
             }
-            bodysize -= readsize;
-            readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
+            bodysize -= actsize;
+            readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
             // request body
             fprintf(log, ">> %s", body);
             fflush(log);
 
-            res = Rio_writen_w(clientfd, body, actsize, &actsize);
+            res = Rio_writen_w(serverfd, body, actsize, &actsize);
         }
-        res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
+        res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
     }
 
     int flow = 0;
     bodysize = 0;
     fprintf(log, "\n<<<<< Receive response from server.\n");
     /* Forward response headers to client */
-    res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize);
-    while(strcmp(buf, "\r\n") && res == 1) {
-        // log response headers
+    res = 1;
+    while (res == 1) {
+        if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) break;
+        if (strncasecmp(buf, "Content-Length", 14) == 0) {
+            sscanf(buf, "Content-Length: %d", &bodysize);
+            fprintf(log, "> Paring -> Content-Length : %d\n", bodysize);
+            fflush(log);
+        }
+        if ((res = Rio_writen_w(clientfd, buf, strlen(buf), &actsize)) != 1) {
+            fprintf(log, "! Forward to client ERROR !");
+            fflush(log);
+            break;
+        }
+        //
         fprintf(log, "%s", buf);
         fflush(log);
-
-        if (strncasecmp(buf, "Content-Length", 14) == 0) {
-            char cnt[20] = "Jarvis";
-            sscanf(buf, "Content-Length: %d", &bodysize);
-            fprintf(log, ">Parsing Content-Length > cnt: %s > bodysize: %d\n", cnt, bodysize);
-        }
-
-        res = Rio_writen_w(fd, buf, strlen(buf), &actsize);
-        if (res == -1) break;
+        // 
+        if (strcmp(buf, "\r\n") == 0) break;
         flow += actsize;
-        res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize);
     }
-    res = Rio_writen_w(fd, "\r\n", strlen("\r\n"), &actsize);
+
     // Forward Response Body to client if any
     if (bodysize > 0) {
         char body[MAXBUF] = "\0";
-        int readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
+        int readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
         // log response body
-        fprintf(log, "\n<Response body>\n");
-        while (strcmp(body, "\r\n") && bodysize > 0)
+        fprintf(log, "<Response body>\n");
+        while (bodysize > 0)
         {
-            res = Rio_readn_w(clientfd, body, readsize, &actsize);
+            res = Rio_readn_w(serverfd, body, readsize, &actsize);
             if (res == -1) break;
-            bodysize -= readsize;
-            readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
+            bodysize -= actsize;
+            readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
             fprintf(log, "%s", body);
             fflush(log);
 
-            res = Rio_writen_w(fd, body, actsize, &actsize);
+            res = Rio_writen_w(clientfd, body, strlen(body), &actsize);
             flow += actsize;
         }
-        res = Rio_writen_w(fd, "\r\n", strlen("\r\n"), &actsize);
+        res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
     }
 
-    Close(clientfd);
+    Close(serverfd);
 
     fprintf(log, ">> Jarvis: Connection Closed.");
     // log
