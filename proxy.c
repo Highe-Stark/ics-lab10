@@ -181,7 +181,7 @@ void doit(int fd, struct sockaddr_in *csock)
         fflush(log);
 
         res = Rio_writen_w(fd, buf, strlen(buf), &actsize);
-        if (res == -1) break;
+        // if (res == -1) break;
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             char cnt[20];
             sscanf(buf, "%s %d", cnt, &bodysize);
