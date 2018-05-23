@@ -58,8 +58,11 @@ int proxy(char *portstr)
         struct sockaddr_in client_sock_in;
         memset(&client_sock_in, 0, sizeof(client_sock_in));
         client_sock_in.sin_family = AF_INET;
-        // struct in_addr addr;
-        inet_pton(AF_INET, hostname, (void *) &(client_sock_in.sin_addr));
+        struct in_addr addr;
+        int ret = inet_pton(AF_INET, hostname, &addr.s_addr);
+        // addr.s_addr = htonl(hostname);
+        client_sock_in.sin_addr = addr;
+        // inet_pton(AF_INET, hostname, (void *) &(client_sock_in.sin_addr));
         client_sock_in.sin_port = htons((short) atoi(port));
 
         doit(connfd, &client_sock_in);
@@ -118,8 +121,8 @@ void doit(int fd, struct sockaddr_in *csock)
     // fprintf(log, ">>>>> Forward request line to server\n");
     while (strcmp(buf, "\r\n") && res == 1 ) {
         // log request to server
-        fprintf(log, "%s", buf);
-        fflush(log);
+        // fprintf(log, "%s", buf);
+        // fflush(log);
 
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             sscanf(buf, "Content-Length: %d", &bodysize);
