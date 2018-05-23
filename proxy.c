@@ -140,7 +140,7 @@ void doit(int fd, struct sockaddr_in *csock)
         if (res == -1) break;
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             char cnt[20];
-            sscanf(buf, "%s: %d", cnt, &bodysize);
+            sscanf(buf, "%s %d", cnt, &bodysize);
             bodysize = atoi(buf + 16);
         }
         res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
@@ -184,8 +184,8 @@ void doit(int fd, struct sockaddr_in *csock)
         if (res == -1) break;
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             char cnt[20];
-            sscanf(buf, "%s: %d", cnt, &bodysize);
-            bodysize = atoi(buf + 16);
+            sscanf(buf, "%s %d", cnt, &bodysize);
+            // bodysize = atoi(buf + 16);
             fprintf(log, ">Parsing Content-Length > cnt: %s > bodysize: %d\n", cnt, bodysize);
         }
         flow += actsize;
