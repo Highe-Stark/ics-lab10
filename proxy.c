@@ -148,7 +148,7 @@ void doit(int fd, struct sockaddr_in *csock)
 
     /* Forward request body to server if any */
     if (bodysize > 0) {
-        char body[MAXBUF];
+        char body[MAXBUF] = "\0";
         int readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
         res = 1;
         // request body
@@ -159,11 +159,12 @@ void doit(int fd, struct sockaddr_in *csock)
                 fprintf(log, "Rio_readn_w error\n");
             }
             bodysize -= readsize;
+            readsize = MAXBUF > bodysize ? bodysize : MAXBUF;
             // request body
             fprintf(log, ">> %s", body);
             fflush(log);
 
-            res = Rio_writen_w(clientfd, body, readsize, &actsize);
+            res = Rio_writen_w(clientfd, body, actsize, &actsize);
         }
         res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
     }
@@ -183,6 +184,7 @@ void doit(int fd, struct sockaddr_in *csock)
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             char cnt[20];
             sscanf(buf, "%s: %d", cnt, &bodysize);
+            fprintf(log, ">Parsing Content-Length > cnt: %s > bodysize: %d\n", cnt, bodysize);
         }
         flow += actsize;
         res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize);
