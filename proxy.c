@@ -45,11 +45,6 @@ int main(int argc, char **argv)
  */
 int proxy(char *portstr)
 {
-    // redirect stderr and stdout to file
-    // int stdfile = Open("std.txt", O_CREAT | O_APPEND, DEF_MODE);
-    // dup2(stdfile, 1);
-    // dup2(stdfile, 2);
-
     int connfd;
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
@@ -59,7 +54,6 @@ int proxy(char *portstr)
         clientlen = sizeof (clientaddr);
         connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
-        fprintf(stdout, "Hey, I am alive! Accepted connection from (%s %s)\n", hostname, port);
         // construct client socket address structure
         struct sockaddr_in client_sock_in;
         memset(&client_sock_in, 0, sizeof(client_sock_in));
@@ -72,8 +66,6 @@ int proxy(char *portstr)
         Close(connfd);
     }
 
-    // Close stderr.txt
-    // Close(stdfile);
     return 0;
 }
 
@@ -187,8 +179,6 @@ void doit(int fd, struct sockaddr_in *csock)
         flow += actsize;
     }
 
-    // fprintf(log, ">> bodysize : %d\n", bodysize);
-
     // Forward Response Body to client if any
     if (bodysize > 0) {
         char body[MAXBUF] = "\0";
@@ -220,12 +210,12 @@ void doit(int fd, struct sockaddr_in *csock)
             flow += actsize;
         }
         res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
+        flow += 2;
     }
 
     Close(serverfd);
 
     fprintf(log, "\n>> Jarvis: Connection Closed.\n");
-    // log
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
     fprintf(log, "%s\n", logContent);
