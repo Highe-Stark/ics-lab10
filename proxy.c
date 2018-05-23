@@ -211,7 +211,12 @@ void doit(int fd, struct sockaddr_in *csock)
             fprintf(log, ">> %s", body);
             fflush(log);
 
-            res = Rio_writen_w(clientfd, body, strlen(body), &actsize);
+            res = Rio_writen_w(clientfd, body, actsize, &actsize);
+            if (res != 1) {
+                fprintf(log, "! Rio_writen_w Error !\n");
+                fflush(log);
+                break;
+            }
             flow += actsize;
         }
         res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
@@ -219,7 +224,7 @@ void doit(int fd, struct sockaddr_in *csock)
 
     Close(serverfd);
 
-    fprintf(log, ">> Jarvis: Connection Closed.");
+    fprintf(log, "\n>> Jarvis: Connection Closed.\n");
     // log
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
