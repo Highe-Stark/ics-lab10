@@ -16,9 +16,9 @@ void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, 
 int proxy (char *port);
 void doit(int fd, struct sockaddr_in *csock);
 int Rio_readn_w(int fd, void *buf, size_t maxsize, size_t* size);
+int Rio_readnb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size);
 int Rio_readlineb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size);
 int Rio_writen_w(int fd, void *buf, size_t n, size_t *size);
-// void read_requesthdrs(rio_t *rp);
 
 /*
  * main - Main routine for the proxy program
@@ -147,9 +147,9 @@ void doit(int fd, struct sockaddr_in *csock)
         // request body
         fprintf(log, "<Request Body>\n");
         while (bodysize > 0 && res == 1) {
-            res = Rio_readn_w(clientfd, body, readsize, &actsize);
+            res = Rio_readnb_w(&crio, body, readsize, &actsize);
             if (res == -1) {
-                fprintf(log, "Rio_readn_w error\n");
+                fprintf(log, "Rio_readnb_w error\n");
             }
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
@@ -199,10 +199,10 @@ void doit(int fd, struct sockaddr_in *csock)
         res = 1;
         while (bodysize > 0)
         {
-            res = Rio_readn_w(serverfd, body, readsize, &actsize);
-            fprintf(log, ">> Rio_readn_w stat: %d\n", res);
+            res = Rio_readnb_w(&srio, body, readsize, &actsize);
+            fprintf(log, ">> Rio_readnb_w stat: %d\n", res);
             if (res == -1) {
-                fprintf(log, "! Rio_readn_w Error !\n%s\n", body);
+                fprintf(log, "! Rio_readnb_w Error !\n%s\n", body);
                 fflush(log);
                 break;
             }
