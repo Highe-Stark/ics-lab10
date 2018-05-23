@@ -76,7 +76,7 @@ void doit(int fd, struct sockaddr_in *csock)
 {
     int clientfd = fd;
     FILE *log = fopen("proxy.log", "a+");
-    fprintf(log, "Hey, I am alive! Accepted connection\n");
+    // fprintf(log, "Hey, I am alive! Accepted connection\n");
     
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
     rio_t crio;             // client rio
@@ -91,15 +91,15 @@ void doit(int fd, struct sockaddr_in *csock)
     }
     
     sscanf(buf, "%s %s %s", method, uri, version);
-    fprintf(log, ">> Jarvis: Request Headers\n>> %s %s %s\n", method, uri, version);
-    fflush(log);
+    // fprintf(log, ">> Jarvis: Request Headers\n>> %s %s %s\n", method, uri, version);
+    // fflush(log);
     
     char server_hostname[MAXLINE], server_pathname[MAXLINE], server_port[MAXLINE];
     if (parse_uri(uri, server_hostname, server_pathname, server_port)) {
         char serr[MAXLINE];
         sprintf(serr, "%s 404 NOT FOUND\r\n\r\n", version);
         res = Rio_writen_w(clientfd, serr, strlen(serr), &actsize);
-        fprintf(log, ">> Jarvis: Parse uri error\n");
+        // fprintf(log, ">> Jarvis: Parse uri error\n");
         fclose(log);
         return;
     }
@@ -115,7 +115,7 @@ void doit(int fd, struct sockaddr_in *csock)
     if (strncasecmp(method, "GET", 3) == 0) {
         bodysize = 0;
     }
-    fprintf(log, ">>>>> Forward request line to server\n");
+    // fprintf(log, ">>>>> Forward request line to server\n");
     while (strcmp(buf, "\r\n") && res == 1 ) {
         // log request to server
         fprintf(log, "%s", buf);
@@ -137,7 +137,7 @@ void doit(int fd, struct sockaddr_in *csock)
         int readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
         res = 1;
         // request body
-        fprintf(log, "<Request Body>\n");
+        // fprintf(log, "<Request Body>\n");
         while (bodysize > 0 && res == 1) {
             res = Rio_readnb_w(&crio, body, readsize, &actsize);
             if (res == -1) {
@@ -146,8 +146,8 @@ void doit(int fd, struct sockaddr_in *csock)
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
             // request body
-            fprintf(log, ">> %s", body);
-            fflush(log);
+            // fprintf(log, ">> %s", body);
+            // fflush(log);
 
             res = Rio_writen_w(serverfd, body, actsize, &actsize);
         }
@@ -156,15 +156,15 @@ void doit(int fd, struct sockaddr_in *csock)
 
     int flow = 0;
     bodysize = 0;
-    fprintf(log, "\n<<<<< Receive response from server.\n");
+    // fprintf(log, "\n<<<<< Receive response from server.\n");
     /* Forward response headers to client */
     res = 1;
     while (res == 1) {
         if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) break;
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             sscanf(buf, "Content-Length: %d", &bodysize);
-            fprintf(log, "> Paring -> Content-Length : %d\n", bodysize);
-            fflush(log);
+            // fprintf(log, "> Paring -> Content-Length : %d\n", bodysize);
+            // fflush(log);
         }
         if ((res = Rio_writen_w(clientfd, buf, strlen(buf), &actsize)) != 1) {
             fprintf(log, "! Forward to client ERROR !");
@@ -172,8 +172,8 @@ void doit(int fd, struct sockaddr_in *csock)
             break;
         }
         //
-        fprintf(log, "%s", buf);
-        fflush(log);
+        // fprintf(log, "%s", buf);
+        // fflush(log);
         // 
         if (strcmp(buf, "\r\n") == 0) break;
         flow += actsize;
@@ -184,22 +184,22 @@ void doit(int fd, struct sockaddr_in *csock)
         char body[MAXBUF] = "\0";
         int readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
         // log response body
-        fprintf(log, "<Response body>\n");
-        fflush(log);
+        // fprintf(log, "<Response body>\n");
+        // fflush(log);
         res = 1;
         while (bodysize > 0)
         {
             res = Rio_readnb_w(&srio, body, readsize, &actsize);
-            fprintf(log, ">> Rio_readnb_w stat: %d\n", res);
+            // fprintf(log, ">> Rio_readnb_w stat: %d\n", res);
             if (res == -1) {
-                fprintf(log, "! Rio_readnb_w Error !\n%s\n", body);
-                fflush(log);
+                // fprintf(log, "! Rio_readnb_w Error !\n%s\n", body);
+                // fflush(log);
                 break;
             }
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
-            fprintf(log, ">> %s", body);
-            fflush(log);
+            // fprintf(log, ">> %s", body);
+            // fflush(log);
 
             res = Rio_writen_w(clientfd, body, actsize, &actsize);
             if (res != 1) {
@@ -215,7 +215,7 @@ void doit(int fd, struct sockaddr_in *csock)
 
     Close(serverfd);
 
-    fprintf(log, "\n>> Jarvis: Connection Closed.\n");
+    // fprintf(log, "\n>> Jarvis: Connection Closed.\n");
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
     fprintf(log, "%s\n", logContent);
