@@ -45,6 +45,8 @@ int main(int argc, char **argv)
  */
 int proxy(char *portstr)
 {
+    FILE *fp = fopen("std.txt", "w");
+
     int connfd;
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
@@ -54,6 +56,9 @@ int proxy(char *portstr)
         clientlen = sizeof (clientaddr);
         connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
+
+        fprintf(fp, "Client Addr: %s\n", ((SA *)&clientaddr)->sa_data);
+        fprintf(fp, "hostname : %s, port : %s\n", hostname, port);
         // construct client socket address structure
         struct sockaddr_in client_sock_in;
         memset(&client_sock_in, 0, sizeof(client_sock_in));
