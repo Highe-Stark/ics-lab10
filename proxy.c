@@ -187,11 +187,16 @@ void doit(int fd, struct sockaddr_in *csock)
     /* Forward response headers to client */
     res = 1;
     while (res == 1) {
+        fprintf(log, ">>");fflush(log);
         if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) {
             fprintf(log, "! Rio_readlineb_w Error ! \n> Status : %d\n>> %s\n", res, buf);
             fflush(log);
             break;
         }
+        //
+        fprintf(log, "%s", buf);
+        fflush(log);
+        // 
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             sscanf(buf, "Content-Length: %d", &bodysize);
             fprintf(log, "> Paring -> Content-Length : %d\n", bodysize);
@@ -202,10 +207,6 @@ void doit(int fd, struct sockaddr_in *csock)
             fflush(log);
             break;
         }
-        //
-        fprintf(log, "%s", buf);
-        fflush(log);
-        // 
         if (strcmp(buf, "\r\n") == 0) break;
         flow += actsize;
     }
