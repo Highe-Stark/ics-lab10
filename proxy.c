@@ -149,6 +149,8 @@ void doit(int fd, struct sockaddr_in *csock)
     fprintf(log, ">> Exit while loop status : %d\n", res);
     fflush(log);
     res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
+    fprintf(log, ">> write \\r\\n to server fd status: %d\n", res);
+    fflush(log);
 
     /* Forward request body to server if any */
     if (bodysize > 0) {
