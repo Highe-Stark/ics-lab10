@@ -59,6 +59,7 @@ int proxy(char *portstr)
 
         fprintf(fp, "Client Addr: %s\n", ((SA *)&clientaddr)->sa_data);
         fprintf(fp, "hostname : %s, port : %s\n", hostname, port);
+        fflush(fp);
         // construct client socket address structure
         struct sockaddr_in client_sock_in;
         memset(&client_sock_in, 0, sizeof(client_sock_in));
@@ -73,7 +74,7 @@ int proxy(char *portstr)
         doit(connfd, &client_sock_in);
         Close(connfd);
     }
-
+    fclose(fp);
     return 0;
 }
 
