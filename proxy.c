@@ -59,7 +59,8 @@ int proxy(char *portstr)
         connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
         fprintf(fp, "Connection established.\n");
         fflush(fp);
-        Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
+        int flags = NI_NUMERICHOST | NI_NUMERICSERV;
+        Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, flags);
 
         fprintf(fp, "Client Addr: %s\n", ((SA *)&clientaddr)->sa_data);
         fprintf(fp, "hostname : %s, port : %s\n", hostname, port);
