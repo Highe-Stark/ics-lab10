@@ -159,6 +159,8 @@ void doit(int fd, struct sockaddr_in *csock)
             res = Rio_readnb_w(&crio, body, readsize, &actsize);
             if (res == -1) {
                 fprintf(log, "Rio_readnb_w error\n");
+                fflush(log);
+                break;
             }
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
@@ -167,6 +169,10 @@ void doit(int fd, struct sockaddr_in *csock)
             fflush(log);
 
             res = Rio_writen_w(serverfd, body, actsize, &actsize);
+        }
+        if (res != 1) {
+            fprintf(log, "! Error Rio_writen_w !\tactsize: %lu", actsize);
+            fflush(log);
         }
         res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
     }
