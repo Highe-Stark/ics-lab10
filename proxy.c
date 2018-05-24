@@ -177,20 +177,21 @@ void doit(int fd, struct sockaddr_in *csock)
 
             res = Rio_writen_w(serverfd, body, actsize, &actsize);
         }
-        if (res != 1) {
-            fprintf(log, "! Error Rio_writen_w !\tactsize: %lu", actsize);
-            fflush(log);
-        }
+        fprintf(log, ">> exit while loop status : %d\n", res); fflush(log);
         res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
     }
 
     int flow = 0;
     bodysize = 0;
-    fprintf(log, "\n<<<<< Receive response from server.\n");
+    fprintf(log, "\n<<<<< Receive response from server.\n"); fflush(log);
     /* Forward response headers to client */
     res = 1;
     while (res == 1) {
-        if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) break;
+        if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) {
+            fprintf(log, "! Rio_readlineb_w Error ! \n> Status : %d\n>> %s\n", res, buf);
+            fflush(log);
+            break;
+        }
         if (strncasecmp(buf, "Content-Length", 14) == 0) {
             sscanf(buf, "Content-Length: %d", &bodysize);
             fprintf(log, "> Paring -> Content-Length : %d\n", bodysize);
