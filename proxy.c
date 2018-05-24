@@ -234,7 +234,8 @@ void doit(int fd, struct sockaddr_in *csock)
     // fprintf(log, "\n>> Jarvis: Connection Closed.\n");
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
-    fprintf(log, "%s\n", logContent);
+    fprintf(stdout, "%s\n", logContent);
+    fflush(stdout);
     fclose(log);
 }
 
