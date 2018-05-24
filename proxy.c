@@ -62,20 +62,22 @@ int proxy(char *portstr)
         int flags = NI_NUMERICHOST | NI_NUMERICSERV;
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, flags);
 
-        fprintf(fp, "Client Addr: %s\n", ((SA *)&clientaddr)->sa_data);
+        // fprintf(fp, "Client Addr: %s\n", ((SA *)&clientaddr)->sa_data);
         fprintf(fp, "hostname : %s, port : %s\n", hostname, port);
         fflush(fp);
         // construct client socket address structure
         struct sockaddr_in client_sock_in;
         memset(&client_sock_in, 0, sizeof(client_sock_in));
         client_sock_in.sin_family = AF_INET;
-        struct in_addr addr;
-        int ret = inet_pton(AF_INET, hostname, &addr.s_addr);
+        // struct in_addr addr;
+        int ret = inet_pton(AF_INET, hostname, &client_sock_in.sin_addr.s_addr);
+        fprintf(fp, "inet_pton result: %d\n", ret);
         // addr.s_addr = htonl(hostname);
-        client_sock_in.sin_addr = addr;
+        // client_sock_in.sin_addr = addr;
         // inet_pton(AF_INET, hostname, (void *) &(client_sock_in.sin_addr));
         client_sock_in.sin_port = htons((short) atoi(port));
-
+        fprintf(fp, "client socket : sin_addr: %x\n", client_sock_in.sin_addr.s_addr);
+        fflush(fp);
         doit(connfd, &client_sock_in);
         Close(connfd);
     }
