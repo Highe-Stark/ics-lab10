@@ -146,11 +146,11 @@ void doit(int fd, struct sockaddr_in *csock)
         if (res == -1) break;
         res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
     }
-    fprintf(log, ">> Exit while loop status : %d\n", res);
-    fflush(log);
+    // fprintf(log, ">> Exit while loop status : %d\n", res);
+    // fflush(log);
     res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
-    fprintf(log, ">> write \\r\\n to server fd status: %d\n", res);
-    fflush(log);
+    // fprintf(log, ">> write \\r\\n to server fd status: %d\n", res);
+    // fflush(log);
 
     /* Forward request body to server if any */
     if (bodysize > 0) {
@@ -159,9 +159,11 @@ void doit(int fd, struct sockaddr_in *csock)
         res = 1;
         // request body
         fprintf(log, "<Request Body>\n");
+        fflush(log);
         while (bodysize > 0 && res == 1) {
             res = Rio_readnb_w(&crio, body, readsize, &actsize);
             fprintf(log, "readsize: %d, actual size: %lu\n", readsize, actsize);
+            fflush(log);
             if (res == -1) {
                 fprintf(log, "Rio_readnb_w error\n");
                 fflush(log);
