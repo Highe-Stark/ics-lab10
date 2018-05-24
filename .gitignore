@@ -13,6 +13,7 @@
 
 ### log ###
 *.log
+std.txt
 
 ### IDE ###
 .vscode/
