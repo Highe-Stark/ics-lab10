@@ -52,9 +52,13 @@ int proxy(char *portstr)
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
     int listenfd = open_listenfd(portstr);
+    fprintf(fp, "Open Listen file descriptor: %d\n", listenfd);
+    fflush(fp);
     while (1) {
         clientlen = sizeof (clientaddr);
         connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
+        fprintf(fp, "Connection established.\n");
+        fflush(fp);
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, 0);
 
         fprintf(fp, "Client Addr: %s\n", ((SA *)&clientaddr)->sa_data);
