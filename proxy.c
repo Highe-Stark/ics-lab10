@@ -247,10 +247,11 @@ void doit(int fd, struct sockaddr_in *csock)
 
     Close(serverfd);
 
-    fprintf(log, "\n>> Jarvis: Connection Closed.\n");
+    fprintf(log, "\n>> Jarvis: Connection Closed.\n"); fflush(log);
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
     fprintf(stdout, "%s\n", logContent);
+    fprintf(log, "%s\n", logContent); fflush(log);
     fflush(stdout);
     fclose(log);
 }
