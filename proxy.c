@@ -189,7 +189,7 @@ void doit(int fd, struct sockaddr_in *csock)
     while (res == 1) {
         fprintf(log, ">>");fflush(log);
         if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) {
-            fprintf(log, "! Rio_readlineb_w Error ! \n> Status : %d\n>> %lu\n", res, actsize);
+            fprintf(log, "\n! Rio_readlineb_w Error ! \n> Status : %d\n>> %lu\n", res, actsize);
             fflush(log);
             break;
         }
@@ -250,8 +250,8 @@ void doit(int fd, struct sockaddr_in *csock)
     fprintf(log, "\n>> Jarvis: Connection Closed.\n"); fflush(log);
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
-    fprintf(stdout, "%s\n", logContent);
     fprintf(log, "%s\n", logContent); fflush(log);
+    fprintf(stdout, "%s\n", logContent);
     fflush(stdout);
     fclose(log);
 }
@@ -266,8 +266,8 @@ int Rio_readn_w(int fd, void *buf, size_t maxsize, size_t *size)
     ssize_t stat = rio_readn(fd, buf, maxsize);
     if (stat == -1) {
         *size = 0;
-        fprintf(stderr, "Read %d bytes failed", (int) maxsize);
-        fflush(stderr);
+        // fprintf(stderr, "Read %d bytes failed", (int) maxsize);
+        // fflush(stderr);
         return -1;
     } else if (stat == 0) {
         *size = stat;
@@ -307,8 +307,8 @@ int Rio_readlineb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size)
     ssize_t stat = rio_readlineb(rp, buf, maxsize);
     if (stat == -1) {
         *size = 0;
-        fprintf(stderr, "Readline failed.");
-        fflush(stderr);
+        // fprintf(stderr, "Readline failed.");
+        // fflush(stderr);
         return -1;
     }
     else if (stat == 0) {
@@ -332,8 +332,8 @@ int Rio_writen_w(int fd, void *buf, size_t n, size_t *size)
     ssize_t stat = rio_writen(fd, buf, n);
     if (stat != n) {
         *size = 0;
-        fprintf(stderr, "Write failed.");
-        fflush(stderr);
+        // fprintf(stderr, "Write failed.");
+        // fflush(stderr);
         return -1;
     } else {
         *size = stat;
