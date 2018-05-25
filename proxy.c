@@ -189,7 +189,7 @@ void doit(int fd, struct sockaddr_in *csock)
     while (res == 1) {
         fprintf(log, ">>");fflush(log);
         if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) {
-            fprintf(log, "! Rio_readlineb_w Error ! \n> Status : %d\n>> %s\n", res, buf);
+            fprintf(log, "! Rio_readlineb_w Error ! \n> Status : %d\n>> %lu\n", res, actsize);
             fflush(log);
             break;
         }
