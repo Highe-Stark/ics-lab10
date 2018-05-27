@@ -47,6 +47,8 @@ int proxy(char *portstr)
 {
     FILE *fp = fopen("std.txt", "w");
 
+    signal(ESPIPE, SIG_IGN);
+
     int connfd;
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t clientlen;
@@ -143,7 +145,11 @@ void doit(int fd, struct sockaddr_in *csock)
         }
 
         res = Rio_writen_w(serverfd, buf, strlen(buf), &actsize);
-        if (res == -1) break;
+        if (res == -1) {
+            fprintf(log, "! Rio_writen_w Error !\n");
+            fflush(log);
+            break;
+        }
         res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
     }
     // fprintf(log, ">> Exit while loop status : %d\n", res);
@@ -178,7 +184,7 @@ void doit(int fd, struct sockaddr_in *csock)
             res = Rio_writen_w(serverfd, body, actsize, &actsize);
         }
         fprintf(log, ">> exit while loop status : %d\n", res); fflush(log);
-        res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
+        // res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
     }
 
     int flow = 0;
