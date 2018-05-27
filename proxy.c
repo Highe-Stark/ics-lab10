@@ -40,7 +40,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    signal(EPIPE, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
     Sem_init(&mutout, 0, 1);
 
     int listenfd, connfd;
@@ -179,8 +179,8 @@ void doit(int cfd, struct sockaddr_in *csock)
  */
 int record(FILE *fp, const char *rcd)
 {
-    int tid = pthread_self();
-    fprintf(fp, "Thread %d >> %s", tid, rcd);
+    long tid = pthread_self();
+    fprintf(fp, "Thread %ld >> %s", tid, rcd);
     fflush(fp);
     return 0;
 }
