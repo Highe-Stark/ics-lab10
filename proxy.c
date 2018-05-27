@@ -54,7 +54,6 @@ int proxy(char *portstr)
     socklen_t clientlen;
     struct sockaddr_storage clientaddr;
     int listenfd = open_listenfd(portstr);
-    fprintf(fp, "Open Listen file descriptor: %d\n", listenfd);
     fflush(fp);
     while (1) {
         clientlen = sizeof (clientaddr);
@@ -64,22 +63,14 @@ int proxy(char *portstr)
         int flags = NI_NUMERICHOST | NI_NUMERICSERV;
         Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, flags);
 
-        // fprintf(fp, "Client Addr: %s\n", ((SA *)&clientaddr)->sa_data);
         fprintf(fp, "hostname : %s, port : %s\n", hostname, port);
         fflush(fp);
         // construct client socket address structure
         struct sockaddr_in client_sock_in;
         memset(&client_sock_in, 0, sizeof(client_sock_in));
         client_sock_in.sin_family = AF_INET;
-        // struct in_addr addr;
         int ret = inet_pton(AF_INET, hostname, &client_sock_in.sin_addr.s_addr);
-        fprintf(fp, "inet_pton result: %d\n", ret);
-        // addr.s_addr = htonl(hostname);
-        // client_sock_in.sin_addr = addr;
-        // inet_pton(AF_INET, hostname, (void *) &(client_sock_in.sin_addr));
         client_sock_in.sin_port = htons((short) atoi(port));
-        fprintf(fp, "client socket : sin_addr: %x\n", client_sock_in.sin_addr.s_addr);
-        fflush(fp);
         doit(connfd, &client_sock_in);
         Close(connfd);
     }
@@ -152,11 +143,7 @@ void doit(int fd, struct sockaddr_in *csock)
         }
         res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
     }
-    // fprintf(log, ">> Exit while loop status : %d\n", res);
-    // fflush(log);
     res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
-    // fprintf(log, ">> write \\r\\n to server fd status: %d\n", res);
-    // fflush(log);
 
     /* Forward request body to server if any */
     if (bodysize > 0) {
@@ -177,9 +164,6 @@ void doit(int fd, struct sockaddr_in *csock)
             }
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
-            // request body
-            // fprintf(log, ">> %s", body);
-            // fflush(log);
 
             res = Rio_writen_w(serverfd, body, actsize, &actsize);
         }
@@ -228,7 +212,6 @@ void doit(int fd, struct sockaddr_in *csock)
         while (bodysize > 0)
         {
             res = Rio_readnb_w(&srio, body, readsize, &actsize);
-            // fprintf(log, ">> Rio_readnb_w stat: %d\n", res);
             if (res == -1) {
                 fprintf(log, "! Rio_readnb_w Error !\n%s\n", body);
                 fflush(log);
@@ -236,8 +219,6 @@ void doit(int fd, struct sockaddr_in *csock)
             }
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
-            // fprintf(log, ">> %s", body);
-            // fflush(log);
 
             res = Rio_writen_w(clientfd, body, actsize, &actsize);
             if (res != 1) {
@@ -272,8 +253,6 @@ int Rio_readn_w(int fd, void *buf, size_t maxsize, size_t *size)
     ssize_t stat = rio_readn(fd, buf, maxsize);
     if (stat == -1) {
         *size = 0;
-        // fprintf(stderr, "Read %d bytes failed", (int) maxsize);
-        // fflush(stderr);
         return -1;
     } else if (stat == 0) {
         *size = stat;
@@ -313,8 +292,6 @@ int Rio_readlineb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size)
     ssize_t stat = rio_readlineb(rp, buf, maxsize);
     if (stat == -1) {
         *size = 0;
-        // fprintf(stderr, "Readline failed.");
-        // fflush(stderr);
         return -1;
     }
     else if (stat == 0) {
@@ -334,12 +311,9 @@ int Rio_readlineb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size)
  */
 int Rio_writen_w(int fd, void *buf, size_t n, size_t *size)
 {
-    // ssize_t stat = Rio_writen(fd, buf, n);
     ssize_t stat = rio_writen(fd, buf, n);
     if (stat != n) {
         *size = 0;
-        // fprintf(stderr, "Write failed.");
-        // fflush(stderr);
         return -1;
     } else {
         *size = stat;
