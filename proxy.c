@@ -109,7 +109,7 @@ void doit(int cfd, struct sockaddr_in *csock)
     sscanf(buf, "%s %s %s", method, uri, version);
     /* Connect to server */
     char shostname[MAXLINE], sport[MAXLINE], spath[MAXLINE];
-    parse_uri(uri, shostname, sport, spath);
+    parse_uri(uri, shostname, spath, sport);
     printf("Connecting server -> hostname : %s, port : %s\n", shostname, sport);
     int sfd = Open_clientfd(shostname, sport);
     rio_t srio;
