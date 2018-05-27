@@ -39,11 +39,6 @@ int main(int argc, char **argv)
         fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
         exit(0);
     }
-    int port = atoi(argv[1]);
-    if (port < 1024 || port > 65536) {
-        fprintf(stderr, "Invalid port number");
-        exit(1);
-    }
 
     signal(EPIPE, SIG_IGN);
     Sem_init(&mutout, 0, 1);
@@ -104,7 +99,7 @@ void doit(int cfd, struct sockaddr_in *csock)
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
     char body[MAXBUF];
     rio_t crio;
-    int actsize;
+    size_t actsize;
     int stat = 1;
 
     /* Read request line and headers */
@@ -117,7 +112,7 @@ void doit(int cfd, struct sockaddr_in *csock)
     parse_uri(uri, shostname, sport, spath);
     int sfd = Open_clientfd(shostname, sport);
     rio_t srio;
-    readlinit(&srio, sfd);
+    Rio_readinitb(&srio, sfd);
 
     /* Forward Request to Server */
     int bodySize = 0;
@@ -137,9 +132,9 @@ void doit(int cfd, struct sockaddr_in *csock)
     if ((stat = Rio_writen_w(sfd, "\r\n", sizeof("\r\n"), &actsize)) != 1) {record(logger, "! Rio_writen_w Error !\n");}
     while (bodySize > 0) {
         int readSize = MAXBUF - 1 > bodySize ? bodySize : MAXBUF - 1;
-        if ((stat = Rio_readnb_w(&crio, body, readSize, actsize)) != 1) {record(logger, "! Rio_readnb_w Error !\n"); break;}
+        if ((stat = Rio_readnb_w(&crio, body, readSize, &actsize)) != 1) {record(logger, "! Rio_readnb_w Error !\n"); break;}
         bodySize -= actsize;
-        if ((stat = Rio_writen_w(sfd, body, sizeof(body), actsize)) != 1) {record(logger, "! Rio_writen_w Error !\n"); break;}
+        if ((stat = Rio_writen_w(sfd, body, sizeof(body), &actsize)) != 1) {record(logger, "! Rio_writen_w Error !\n"); break;}
     }
 
     /* Forward Response to Server */
@@ -161,10 +156,10 @@ void doit(int cfd, struct sockaddr_in *csock)
     if ((stat = Rio_writen_w(sfd, "\r\n", sizeof("\r\n"), &actsize)) != 1) {record(logger, "! Rio_writen_w Error !\n");}
     while (bodySize > 0) {
         int readSize = MAXBUF - 1 > bodySize ? bodySize : MAXBUF - 1;
-        if ((stat = Rio_readnb_w(&srio, body, readSize, actsize)) != 1) {record(logger, "! Rio_readnb_w Error !\n"); break;}
+        if ((stat = Rio_readnb_w(&srio, body, readSize, &actsize)) != 1) {record(logger, "! Rio_readnb_w Error !\n"); break;}
         bodySize -= actsize;
         flow += actsize;
-        if ((stat = Rio_writen_w(cfd, body, sizeof(body), actsize)) != 1) {record(logger, "! Rio_writen_w Error !\n"); break;}
+        if ((stat = Rio_writen_w(cfd, body, sizeof(body), &actsize)) != 1) {record(logger, "! Rio_writen_w Error !\n"); break;}
     }
 
     char log[MAXLINE];
