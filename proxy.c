@@ -72,7 +72,7 @@ int main(int argc, char **argv)
  */
 int build_sockaddr_in(struct sockaddr_in *sap, const char *hostname, const char *port)
 {
-    memset(&sap, 0, sizeof(struct sockaddr_in));
+    memset(sap, 0, sizeof(struct sockaddr_in));
     sap->sin_family = AF_INET;
     inet_pton(AF_INET, hostname, &(sap->sin_addr.s_addr));
     sap->sin_port = htons((short) atoi(port));
@@ -169,6 +169,7 @@ void doit(int cfd, struct sockaddr_in *csock)
     fflush(stdout);
     V(&mutout);
 
+    fclose(logger);
     return ;
 }
 
