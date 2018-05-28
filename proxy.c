@@ -47,7 +47,7 @@ int proxy(char *portstr)
 {
     FILE *fp = fopen("std.txt", "w");
 
-    signal(ESPIPE, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
 
     int connfd;
     char hostname[MAXLINE], port[MAXLINE];
@@ -103,9 +103,6 @@ void doit(int fd, struct sockaddr_in *csock)
     
     char server_hostname[MAXLINE], server_pathname[MAXLINE], server_port[MAXLINE];
     if (parse_uri(uri, server_hostname, server_pathname, server_port)) {
-        char serr[MAXLINE];
-        sprintf(serr, "%s 404 NOT FOUND\r\n\r\n", version);
-        res = Rio_writen_w(clientfd, serr, strlen(serr), &actsize);
         fprintf(log, ">> Jarvis: Parse uri error\n");
         fclose(log);
         return;
