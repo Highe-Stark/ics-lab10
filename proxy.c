@@ -13,11 +13,20 @@
  */
 int parse_uri(char *uri, char *target_addr, char *path, char *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, size_t size);
+void *thread(void *vargs);
 void doit(int fd, struct sockaddr_in *csock);
 int Rio_readn_w(int fd, void *buf, size_t maxsize, size_t* size);
 int Rio_readnb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size);
 int Rio_readlineb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size);
 int Rio_writen_w(int fd, void *buf, size_t n, size_t *size);
+
+sem_t mutex;
+
+typedef struct {
+    int thid;
+    int connfd;
+    struct sockaddr_in sock_in;
+} thr_sock_t;
 
 /*
  * main - Main routine for the proxy program
@@ -31,11 +40,14 @@ int main(int argc, char **argv)
     }
 
     signal(SIGPIPE, SIG_IGN);
+    Sem_init(&mutex, 0, 1);
 
     int connfd;
     char hostname[MAXLINE], port[MAXLINE];
     socklen_t client_len;
     struct sockaddr_storage client_addr;
+    pthread_t tid;
+
     int listenfd = open_listenfd(argv[1]);
     while (1) {
         client_len = sizeof(client_addr);
@@ -43,16 +55,36 @@ int main(int argc, char **argv)
         int flags = NI_NUMERICHOST | NI_NUMERICSERV;
         Getnameinfo((SA *) &client_addr, client_len, hostname, MAXLINE, port, MAXLINE, flags);
 
-        struct sockaddr_in csock_in;
-        memset(&csock_in, 0, sizeof(csock_in));
-        csock_in.sin_family = AF_INET;
-        inet_pton(AF_INET, hostname, &csock_in.sin_addr.s_addr);
-        csock_in.sin_port = htons((short) atoi(port));
-        doit (connfd, &csock_in);
-        Close(connfd);
+        struct sockaddr_in *csock_in;
+        thr_sock_t *thr_sock = Malloc(sizeof(thr_sock_t));
+        thr_sock->connfd = connfd;
+        csock_in = &thr_sock->sock_in;
+
+        memset(csock_in, 0, sizeof(struct sockaddr_in));
+        csock_in->sin_family = AF_INET;
+        inet_pton(AF_INET, hostname, &(csock_in->sin_addr.s_addr));
+        csock_in->sin_port = htons((short) atoi(port));
+        Pthread_create(&tid, NULL, thread, thr_sock);
+        // doit (connfd, &csock_in);
+        // Close(connfd);
     }
 
     exit(0);
+}
+
+/* 
+ * thread - thread routine
+ */
+void *thread(void *vargs)
+{
+    thr_sock_t thr_sock = *((thr_sock_t *)vargs);
+    int connfd = thr_sock.connfd;
+    struct sockaddr_in *csock_in = &thr_sock.sock_in;
+    Pthread_detach(pthread_self());
+    Free(vargs);
+    doit(connfd, csock_in);
+    Close(connfd);
+    return NULL;
 }
 
 /*
@@ -239,8 +271,10 @@ void doit(int fd, struct sockaddr_in *csock)
     char logContent[MAXLINE];
     format_log_entry(logContent, csock, uri, flow);
     fprintf(log, "%s\n", logContent); fflush(log);
+    P(&mutex);
     fprintf(stdout, "%s\n", logContent);
     fflush(stdout);
+    V(&mutex);
     fclose(log);
 }
 
