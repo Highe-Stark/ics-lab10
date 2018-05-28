@@ -115,7 +115,7 @@ void doit(int fd, struct sockaddr_in *csock)
     rio_t srio;            // server rio
     int serverfd = open_clientfd(server_hostname, server_port);
     if (serverfd < 0) {
-        fprintf(log, "! Open clientfd Error !\n");
+        fprintf(log, "! Open clientfd Error ! Server hostname: %s, Server port : %s\n", server_hostname, server_port);
         fflush(log);
         return;
     }
