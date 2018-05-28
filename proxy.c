@@ -103,8 +103,10 @@ void doit(int fd, struct sockaddr_in *csock)
     int res = 0;
     if ((res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize)) == -1){
         fprintf(stderr, "Rio_readlineb_w error");
+        fclose(log);
         return;
     }
+    if (actsize == 0) { fclose(log); return;}
     
     sscanf(buf, "%s %s %s", method, uri, version);
     fprintf(log, ">> Jarvis: Request Headers\n>> %s %s %s\n", method, uri, version);
@@ -123,6 +125,7 @@ void doit(int fd, struct sockaddr_in *csock)
     if (serverfd < 0) {
         fprintf(log, "! Open clientfd Error ! Server hostname: %s, Server port : %s\n", server_hostname, server_port);
         fflush(log);
+        fclose(log);
         return;
     }
     Rio_readinitb(&srio, serverfd);
@@ -143,14 +146,26 @@ void doit(int fd, struct sockaddr_in *csock)
         }
 
         res = Rio_writen_w(serverfd, buf, strlen(buf), &actsize);
-        if (res == -1) {
-            fprintf(log, "! Rio_writen_w Error !\n");
-            fflush(log);
-            break;
+        if (res != 1) {
+            fprintf(log, "! Rio_writen_w Error ! Status : %d, write size : %ld\n", res, actsize);
+            fflush(log); fclose(log);
+            Close(serverfd); return;
         }
         res = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize);
+        if (res != 1 || actsize == 0) {
+            fprintf(log, "! Rio_readlineb_w Error ! Status : %d, read size : %ld\n", res, actsize); fflush(log); fclose(log);
+            Close(serverfd); return;
+        }
     }
     res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
+    if (res != 1)
+    {
+        fprintf(log, "! Rio_writen_w Error ! Status : %d, write size : %ld\n", res, actsize);
+        fflush(log);
+        fclose(log);
+        Close(serverfd);
+        return;
+    }
 
     /* Forward request body to server if any */
     int hasbody = 0;
@@ -163,19 +178,24 @@ void doit(int fd, struct sockaddr_in *csock)
         fprintf(log, "<Request Body>\n");
         fflush(log);
         while (bodysize > 0 && res == 1) {
-            res = Rio_readnb_w(&crio, body, readsize, &actsize);
-            fprintf(log, "readsize: %d, actual size: %lu\n", readsize, actsize);
-            fflush(log);
-            if (actsize == 0) break;
-            if (res == -1) {
-                fprintf(log, "Rio_readnb_w error\n");
+            if ((res = Rio_readnb_w(&crio, body, readsize, &actsize))!= 1) {
+                fprintf(log, "! Rio_readnb_w error ! Status : %d, read size : %ld\n", res, actsize);
                 fflush(log);
-                break;
+                fclose(log);
+                Close(serverfd);
+                return;
             }
+            if (actsize == 0) break;
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
 
-            res = Rio_writen_w(serverfd, body, actsize, &actsize);
+            if ((res = Rio_writen_w(serverfd, body, actsize, &actsize)) != 1) {
+                fprintf(log, "! Rio_writen_w Error ! Status : %d, write size : %ld\n", res, actsize);
+                fflush(log);
+                fclose(log);
+                Close(serverfd);
+                return;
+            }
         }
         fprintf(log, ">> exit while loop status : %d\n", res); fflush(log);
         // res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
@@ -188,14 +208,18 @@ void doit(int fd, struct sockaddr_in *csock)
             if ((res = Rio_readnb_w(&crio, body, 1, &actsize)) != 1) {
                 fprintf(log, "! Rio_readnb_w Error ! status : %d, readsize : %ld\n", res, actsize);
                 fflush(log);
-                break;
+                fclose(log);
+                Close(serverfd);
+                return;
             }
             if (actsize == 0) break;
             fprintf(log, "%c", body[0]); fflush(log);
             if ((res = Rio_writen_w(serverfd, body, 1, &actsize)) != 1) {
                 fprintf(log, "! Rio_writen_w Error ! status : %d, write size : %ld\n", res, actsize);
                 fflush(log);
-                break;
+                fclose(log);
+                Close(serverfd);
+                return;
             }
             if (body[0] == '\n' && pre == '\r') break;
             pre = body[0];
@@ -211,9 +235,11 @@ void doit(int fd, struct sockaddr_in *csock)
     while (res == 1) {
         fprintf(log, ">>");fflush(log);
         if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) {
-            fprintf(log, "\n! Rio_readlineb_w Error ! \n> Status : %d\n>> %lu\n", res, actsize);
+            fprintf(log, "\n! Rio_readlineb_w Error ! Status : %d, Read size: %ld\n", res, actsize);
             fflush(log);
-            break;
+            fclose(log);
+            Close(serverfd);
+            return;
         }
         //
         fprintf(log, "%s", buf);
@@ -225,12 +251,14 @@ void doit(int fd, struct sockaddr_in *csock)
             fflush(log);
         }
         if ((res = Rio_writen_w(clientfd, buf, strlen(buf), &actsize)) != 1) {
-            fprintf(log, "! Forward to client ERROR !");
+            fprintf(log, "! Rio_writen_w ERROR ! Status : %d, Write size : %ld\n", res, actsize);
             fflush(log);
-            break;
+            fclose(log);
+            Close(serverfd);
+            return;
         }
-        if (strcmp(buf, "\r\n") == 0) break;
         flow += actsize;
+        if (strcmp(buf, "\r\n") == 0) break;
     }
 
     // Forward Response Body to client if any
@@ -245,24 +273,28 @@ void doit(int fd, struct sockaddr_in *csock)
         {
             res = Rio_readnb_w(&srio, body, readsize, &actsize);
             if (actsize == 0) break;
-            if (res == -1) {
-                fprintf(log, "! Rio_readnb_w Error !\n%s\n", body);
+            if (res != 1) {
+                fprintf(log, "! Rio_readnb_w Error ! Status : %d, Read size : %ld\n", res, actsize);
                 fflush(log);
-                break;
+                fclose(log);
+                Close(serverfd);
+                return;
             }
             bodysize -= actsize;
             readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
 
             res = Rio_writen_w(clientfd, body, actsize, &actsize);
             if (res != 1) {
-                fprintf(log, "! Rio_writen_w Error !\n");
+                fprintf(log, "! Rio_writen_w Error ! Status : %d, Write size : %ld\n", res, actsize);
                 fflush(log);
+                fclose(log);
+                Close(serverfd);
                 break;
             }
             flow += actsize;
         }
         res = Rio_writen_w(clientfd, "\r\n", strlen("\r\n"), &actsize);
-        flow += 2;
+        // flow += 2;
     }
 
     Close(serverfd);
