@@ -13,7 +13,6 @@
  */
 int parse_uri(char *uri, char *target_addr, char *path, char *port);
 void format_log_entry(char *logstring, struct sockaddr_in *sockaddr, char *uri, size_t size);
-int proxy (char *port);
 void doit(int fd, struct sockaddr_in *csock);
 int Rio_readn_w(int fd, void *buf, size_t maxsize, size_t* size);
 int Rio_readnb_w(rio_t *rp, void *buf, size_t maxsize, size_t *size);
@@ -30,52 +29,30 @@ int main(int argc, char **argv)
         fprintf(stderr, "Usage: %s <port number>\n", argv[0]);
         exit(0);
     }
-    int port = atoi(argv[1]);
-    if (port < 1024 || port > 65536) {
-        fprintf(stderr, "Invalid port number");
-        exit(1);
-    }
-    proxy(argv[1]);
-
-    exit(0);
-}
-
-/*
- * proxy - Codes written by higher stark
- */
-int proxy(char *portstr)
-{
-    FILE *fp = fopen("std.txt", "w");
 
     signal(SIGPIPE, SIG_IGN);
 
     int connfd;
     char hostname[MAXLINE], port[MAXLINE];
-    socklen_t clientlen;
-    struct sockaddr_storage clientaddr;
-    int listenfd = open_listenfd(portstr);
-    fflush(fp);
+    socklen_t client_len;
+    struct sockaddr_storage client_addr;
+    int listenfd = open_listenfd(argv[1]);
     while (1) {
-        clientlen = sizeof (clientaddr);
-        connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
-        fprintf(fp, "Connection established.\n");
-        fflush(fp);
+        client_len = sizeof(client_addr);
+        connfd = Accept(listenfd, (SA *)&client_addr, &client_len);
         int flags = NI_NUMERICHOST | NI_NUMERICSERV;
-        Getnameinfo((SA *) &clientaddr, clientlen, hostname, MAXLINE, port, MAXLINE, flags);
+        Getnameinfo((SA *) &client_addr, client_len, hostname, MAXLINE, port, MAXLINE, flags);
 
-        fprintf(fp, "hostname : %s, port : %s\n", hostname, port);
-        fflush(fp);
-        // construct client socket address structure
-        struct sockaddr_in client_sock_in;
-        memset(&client_sock_in, 0, sizeof(client_sock_in));
-        client_sock_in.sin_family = AF_INET;
-        inet_pton(AF_INET, hostname, &client_sock_in.sin_addr.s_addr);
-        client_sock_in.sin_port = htons((short) atoi(port));
-        doit(connfd, &client_sock_in);
+        struct sockaddr_in csock_in;
+        memset(&csock_in, 0, sizeof(csock_in));
+        csock_in.sin_family = AF_INET;
+        inet_pton(AF_INET, hostname, &csock_in.sin_addr.s_addr);
+        csock_in.sin_port = htons((short) atoi(port));
+        doit (connfd, &csock_in);
         Close(connfd);
     }
-    fclose(fp);
-    return 0;
+
+    exit(0);
 }
 
 /*
