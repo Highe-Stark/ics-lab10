@@ -69,7 +69,7 @@ int proxy(char *portstr)
         struct sockaddr_in client_sock_in;
         memset(&client_sock_in, 0, sizeof(client_sock_in));
         client_sock_in.sin_family = AF_INET;
-        int ret = inet_pton(AF_INET, hostname, &client_sock_in.sin_addr.s_addr);
+        inet_pton(AF_INET, hostname, &client_sock_in.sin_addr.s_addr);
         client_sock_in.sin_port = htons((short) atoi(port));
         doit(connfd, &client_sock_in);
         Close(connfd);
@@ -157,6 +157,7 @@ void doit(int fd, struct sockaddr_in *csock)
             res = Rio_readnb_w(&crio, body, readsize, &actsize);
             fprintf(log, "readsize: %d, actual size: %lu\n", readsize, actsize);
             fflush(log);
+            if (actsize == 0) break;
             if (res == -1) {
                 fprintf(log, "Rio_readnb_w error\n");
                 fflush(log);
@@ -212,6 +213,7 @@ void doit(int fd, struct sockaddr_in *csock)
         while (bodysize > 0)
         {
             res = Rio_readnb_w(&srio, body, readsize, &actsize);
+            if (actsize == 0) break;
             if (res == -1) {
                 fprintf(log, "! Rio_readnb_w Error !\n%s\n", body);
                 fflush(log);
