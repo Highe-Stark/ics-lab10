@@ -113,7 +113,12 @@ void doit(int fd, struct sockaddr_in *csock)
 
     /* connect to server */
     rio_t srio;            // server rio
-    int serverfd = Open_clientfd(server_hostname, server_port);
+    int serverfd = open_clientfd(server_hostname, server_port);
+    if (serverfd < 0) {
+        fprintf(log, "! Open clientfd Error !\n");
+        fflush(log);
+        return;
+    }
     Rio_readinitb(&srio, serverfd);
 
     /* Forward request headers to server */
