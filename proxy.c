@@ -101,6 +101,7 @@ void doit(int cfd, struct sockaddr_in *csock)
     int stat = 1;
     size_t actsize = 0;     // actual size
     if ((stat = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize)) != 1) return;
+    printf("[%ld] %s\n", actsize, buf);    // DEBUG <
     sscanf(buf, "%s %s %s", method, uri, version);
     if (parse_uri(uri, hostname, pathname, port) == -1) {
         printf("Error parse uri\n");
@@ -113,6 +114,7 @@ void doit(int cfd, struct sockaddr_in *csock)
         close(sfd);
         return;
     }
+    printf("[%ld] %s\n", actsize, buf);     // DEBUG <
     size_t flow = 0;
     if ((flow = forward(&crio, sfd, method)) == -1) {
         close(sfd);
@@ -146,6 +148,7 @@ size_t forward(rio_t *criop, int sfd, char *method)
     while (1) {
         if ((stat = Rio_readlineb_w(criop, buf, MAXLINE - 1, &actsize)) == -1) return -1;
         if (actsize == 0 || stat == 0) return flow;
+        printf("[%ld] %s\n",actsize, buf);    // DEBUG <
         parse_cnt_len(buf, &bodysize);
         if ((stat = Rio_writen_w(sfd, buf, actsize, &actsize)) != 1) return -1;
         flow += actsize;
@@ -162,6 +165,8 @@ size_t forward(rio_t *criop, int sfd, char *method)
             if ((stat = Rio_readnb_w(criop, body, MAXBUF - 1, &actsize)) == -1) return -1;
             if (actsize == 0) break;
             if ((stat = Rio_writen_w(sfd, body, actsize, &actsize)) != 1) return -1;
+            body[actsize] = '\0';                  // DEBUG <
+            printf("[%ld] %s\n", actsize, buf);    // DEBUG <
             flow += actsize;
             if (actsize < MAXBUF - 1) break;
         }
@@ -172,6 +177,8 @@ size_t forward(rio_t *criop, int sfd, char *method)
         if ((stat = Rio_readnb_w(criop, body, readsize, &actsize)) == -1) return -1;
         if (actsize == 0) break;
         if ((stat = Rio_writen_w(sfd, body, actsize, &actsize)) != 1) return -1;
+        body[actsize] = '\0';               // DEBUG <
+        printf("[%ld] %s\n", actsize, buf); // DEBUG <
         flow += actsize;
         if (actsize < readsize) break;
     }
@@ -186,6 +193,7 @@ int parse_cnt_len(const char *hdr, long *len)
     if (strncasecmp(hdr, "Content-Length", 14) == 0) {
         char cnt[30];
         sscanf(hdr, "%s %ld", cnt, len);
+        printf("Parse Content Length : %ld\n", *len);
         return 1;
     }
     return 0;

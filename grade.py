@@ -219,7 +219,7 @@ def helper_readline(proc, timeout=-1):
     if resp == "error\r\n":
         return None
     elif resp.startswith("Line too long"):
-        raise LabErrorException("Your proxy send an extreamely line to server/client:\n" + \
+        raise LabErrorException("Your proxy send an extremely long line to server/client:\n" + \
                                 "\t" + binascii.unhexlify(resp[len("Line too long "):].strip()))
     else:
         try:
