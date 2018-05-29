@@ -198,7 +198,14 @@ void doit(int fd, struct sockaddr_in *csock)
             }
         }
         fprintf(log, ">> exit while loop status : %d\n", res); fflush(log);
-        // res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize);
+        if ((res = Rio_writen_w(serverfd, "\r\n", strlen("\r\n"), &actsize)) != 1)
+        {
+            fprintf(log, "! Rio_writen_w Error ! Status : %d, write size : %ld\n", res, actsize);
+            fflush(log);
+            fclose(log);
+            Close(serverfd);
+            return;
+        }
     } else if (hasbody) {
         actsize = 1;
         res = 1;
