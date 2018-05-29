@@ -241,6 +241,7 @@ void doit(int fd, struct sockaddr_in *csock)
     res = 1;
     while (res == 1) {
         fprintf(log, ">>");fflush(log);
+        printf(">> [1]\n");
         if ((res = Rio_readlineb_w(&srio, buf, MAXLINE, &actsize)) != 1) {
             fprintf(log, "\n! Rio_readlineb_w Error ! Status : %d, Read size: %ld\n", res, actsize);
             fflush(log);
@@ -248,9 +249,9 @@ void doit(int fd, struct sockaddr_in *csock)
             Close(serverfd);
             return;
         }
+        printf(">> [2]\n");
         if (actsize == 0) {
-            fprintf(stdout, "Read 0 byte\n");
-            fflush(log);
+            printf("Read 0 byte\n");
             break;
         }
         //
@@ -272,6 +273,7 @@ void doit(int fd, struct sockaddr_in *csock)
         flow += actsize;
         if (strcmp(buf, "\r\n") == 0) break;
     }
+    printf(">> [3]\n");
 
     // Forward Response Body to client if any
     if (bodysize > 0) {
