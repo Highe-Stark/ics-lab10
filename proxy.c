@@ -104,7 +104,7 @@ void doit(int cfd, struct sockaddr_in *csock)
         printf("<1> Rio_readlineb_w Error, Abort\n");
         return;
     }
-    printf("[%ld] %s\n", actsize, buf);    // DEBUG <
+    printf("[%ld] %s", actsize, buf);    // DEBUG <
     sscanf(buf, "%s %s %s", method, uri, version);
     if (parse_uri(uri, hostname, pathname, port) == -1) {
         printf("Error parse uri\n");
@@ -173,28 +173,33 @@ size_t forward(rio_t *criop, int sfd, char *method)
         hasbody = strcasecmp(method, "GET");
     }
     if (hasbody) {
+        printf("Has body\n");
         while (1) {
             if ((stat = Rio_readnb_w(criop, body, MAXBUF - 1, &actsize)) == -1) return -1;
             if (actsize == 0) break;
             if ((stat = Rio_writen_w(sfd, body, actsize, &actsize)) != 1) return -1;
             body[actsize] = '\0';                  // DEBUG <
-            printf("[%ld] %s", actsize, buf);    // DEBUG <
+            printf("[%ld] %s", actsize, body);    // DEBUG <
             flow += actsize;
             if (actsize < MAXBUF - 1) break;
         }
+        if ((stat = Rio_writen_w(sfd, "\r\n", strlen("\r\n"), &actsize)) != 1)
+            return -1;
         return flow;
     }
     int readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
+    printf("<Body>\n");
     while (bodysize > 0) {
         if ((stat = Rio_readnb_w(criop, body, readsize, &actsize)) == -1) return -1;
         if (actsize == 0) break;
         if ((stat = Rio_writen_w(sfd, body, actsize, &actsize)) != 1) return -1;
         body[actsize] = '\0';               // DEBUG <
-        printf("[%ld] %s", actsize, buf); // DEBUG <
+        printf("[%ld] %s", actsize, body); // DEBUG <
         bodysize -= actsize;
         flow += actsize;
         if (actsize < readsize) break;
     }
+    if ((stat = Rio_writen_w(sfd, "\r\n", strlen("\r\n"), &actsize)) != 1) return -1;
     return flow;
 }
 
