@@ -160,7 +160,7 @@ size_t forward(rio_t *criop, int sfd, char *method)
     char buf[MAXLINE], body[MAXBUF];
     while (1) {
         if ((stat = Rio_readlineb_w(criop, buf, MAXLINE - 1, &actsize)) == -1) return -1;
-        if (actsize == 0 || stat == 0) return flow;
+        if (actsize == 0 || stat == 0) break;
         printf("[%ld] %s",actsize, buf);    // DEBUG <
         parse_cnt_len(buf, &bodysize);
         if ((stat = Rio_writen_w(sfd, buf, actsize, &actsize)) != 1) return -1;
