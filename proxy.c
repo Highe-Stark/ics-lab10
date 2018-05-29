@@ -109,7 +109,7 @@ void doit(int cfd, struct sockaddr_in *csock)
     }
     int sfd;
     if ((sfd = open_clientfd(hostname, port)) < 0) { close(sfd); return;}
-    sprintf(buf, "%s /%s %s", method, pathname, version);
+    sprintf(buf, "%s /%s %s\r\n", method, pathname, version);
     if ((stat = Rio_writen_w(sfd, buf, sizeof(buf), &actsize)) != 1) {
         close(sfd);
         return;
