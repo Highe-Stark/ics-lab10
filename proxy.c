@@ -166,7 +166,7 @@ size_t forward(rio_t *criop, int sfd, char *method)
         flow += actsize;
         if (strcmp(buf, "\r\n") == 0) break;
     }
-
+    printf("--- Header Forwarding Complete ----\n");
     int hasbody = 0;
     if (method == NULL) hasbody = bodysize == 0;
     else {
@@ -191,6 +191,7 @@ size_t forward(rio_t *criop, int sfd, char *method)
         if ((stat = Rio_writen_w(sfd, body, actsize, &actsize)) != 1) return -1;
         body[actsize] = '\0';               // DEBUG <
         printf("[%ld] %s", actsize, buf); // DEBUG <
+        bodysize -= actsize;
         flow += actsize;
         if (actsize < readsize) break;
     }
