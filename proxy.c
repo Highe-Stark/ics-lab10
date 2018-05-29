@@ -101,7 +101,7 @@ void doit(int cfd, struct sockaddr_in *csock)
     int stat = 1;
     size_t actsize = 0;     // actual size
     if ((stat = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize)) != 1) {
-        printf("<1> Rio_readlineb_w Error, Abort\n");
+        printf("<1> Rio_readlineb_w Error, Abort\n");    // DEBUG <
         return;
     }
     printf("[%ld] %s", actsize, buf);    // DEBUG <
@@ -114,27 +114,28 @@ void doit(int cfd, struct sockaddr_in *csock)
     if ((sfd = open_clientfd(hostname, port)) < 0)
     {
         close(sfd);
-        printf("<2> oepn clientfd Error, Abort\n");
+        printf("<2> oepn clientfd Error, Abort\n");    // DEBUG <
         return;
     }
     rio_readinitb(&srio, sfd);
     sprintf(buf, "%s /%s %s\r\n", method, pathname, version);
     if ((stat = Rio_writen_w(sfd, buf, strlen(buf), &actsize)) != 1) {
         close(sfd);
-        printf("<3> Rio_writen_w Error, Abort\n");
+        printf("<3> Rio_writen_w Error, Abort\n");     // DEBUG <
         return;
     }
     printf("[%ld] %s\n", actsize, buf);     // DEBUG <
     size_t flow = 0;
     if ((flow = forward(&crio, sfd, method)) == -1) {
         close(sfd);
-        printf("<4> forward client to server Error, Abort\n");
+        printf("<4> forward client to server Error, Abort\n");   // DEBUG <
         return;
     }
+    printf("---- Complete forward client to server -----\n");   // DEBUG <
     flow = 0;
     if ((flow = forward(&srio, cfd, NULL)) == -1) {
         close(sfd);
-        printf("<5> forward server to client Error, Abort\n");
+        printf("<5> forward server to client Error, Abort\n");   // DEBUG <
         return;
     }
 
@@ -187,9 +188,10 @@ size_t forward(rio_t *criop, int sfd, char *method)
             return -1;
         return flow;
     }
-    int readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
+    int readsize = 0;
     printf("<Body>\n");
     while (bodysize > 0) {
+        readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
         if ((stat = Rio_readnb_w(criop, body, readsize, &actsize)) == -1) return -1;
         if (actsize == 0) break;
         if ((stat = Rio_writen_w(sfd, body, actsize, &actsize)) != 1) return -1;
