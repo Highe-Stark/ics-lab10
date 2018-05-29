@@ -117,7 +117,6 @@ void doit(int cfd, struct sockaddr_in *csock)
         printf("<2> oepn clientfd Error, Abort\n");    // DEBUG <
         return;
     }
-    rio_readinitb(&srio, sfd);
     sprintf(buf, "%s /%s %s\r\n", method, pathname, version);
     if ((stat = Rio_writen_w(sfd, buf, strlen(buf), &actsize)) != 1) {
         close(sfd);
@@ -133,6 +132,7 @@ void doit(int cfd, struct sockaddr_in *csock)
     }
     printf("---- Complete forward client to server -----\n");   // DEBUG <
     flow = 0;
+    rio_readinitb(&srio, sfd);
     if ((flow = forward(&srio, cfd, NULL)) == -1) {
         close(sfd);
         printf("<5> forward server to client Error, Abort\n");   // DEBUG <
