@@ -83,6 +83,7 @@ void *thread(void *vargs)
     Pthread_detach(pthread_self());
     Free(vargs);
     doit(connfd, csock_in);
+    printf(">> [-]\n");
     Close(connfd);
     return NULL;
 }
