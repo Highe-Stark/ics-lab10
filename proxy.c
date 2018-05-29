@@ -170,7 +170,7 @@ size_t forward(rio_t *criop, int sfd, char *method)
     int hasbody = 0;
     if (method == NULL) hasbody = bodysize == 0;
     else {
-        hasbody = strcasecmp(method, "GET");
+        hasbody = strcasecmp(method, "GET") && bodysize == 0;
     }
     if (hasbody) {
         printf("Has body\n");
