@@ -248,6 +248,11 @@ void doit(int fd, struct sockaddr_in *csock)
             Close(serverfd);
             return;
         }
+        if (actsize == 0) {
+            fprintf(stdout, "Read 0 byte\n");
+            fflush(log);
+            break;
+        }
         //
         fprintf(log, "%s", buf);
         fflush(log);
