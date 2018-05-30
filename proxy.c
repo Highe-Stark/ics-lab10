@@ -41,7 +41,7 @@ int main(int argc, char **argv)
         exit(0);
     }
 
-    signal(SIGPIPE, SIG_IGN);
+    // signal(SIGPIPE, SIG_IGN);
     Sem_init(&mutex, 0, 1);
 
     int connfd;
@@ -67,8 +67,6 @@ int main(int argc, char **argv)
         inet_pton(AF_INET, hostname, &(csock_in->sin_addr.s_addr));
         csock_in->sin_port = htons((short) atoi(port));
         Pthread_create(&tid, NULL, thread, thr_sock);
-        // doit (connfd, &csock_in);
-        // Close(connfd);
     }
 
     exit(0);
@@ -98,51 +96,76 @@ void doit(int cfd, struct sockaddr_in *csock)
     rio_readinitb(&crio, cfd);
 
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE], hostname[MAXLINE], pathname[MAXLINE], port[MAXLINE];
-    int stat = 1;
-    size_t actsize = 0;     // actual size
-    if ((stat = Rio_readlineb_w(&crio, buf, MAXLINE, &actsize)) != 1) {
-        printf("<1> Rio_readlineb_w Error, Abort\n");    // DEBUG <
+    ssize_t stat = 1;
+    /* Get  Http request */
+    if ((stat = rio_readlineb(&crio, buf, MAXLINE)) < 1) {
         return;
     }
-    printf("[%ld] %s", actsize, buf);    // DEBUG <
     sscanf(buf, "%s %s %s", method, uri, version);
     if (parse_uri(uri, hostname, pathname, port) == -1) {
         printf("Error parse uri\n");
         return;
     }
     int sfd;
-    if ((sfd = open_clientfd(hostname, port)) < 0)
-    {
-        close(sfd);
-        printf("<2> oepn clientfd Error, Abort\n");    // DEBUG <
-        return;
-    }
+    if ((sfd = open_clientfd(hostname, port)) < 0) return;
+    /* Forward request to server */
     sprintf(buf, "%s /%s %s\r\n", method, pathname, version);
-    if ((stat = Rio_writen_w(sfd, buf, strlen(buf), &actsize)) != 1) {
-        close(sfd);
-        printf("<3> Rio_writen_w Error, Abort\n");     // DEBUG <
-        return;
-    }
-    printf("[%ld] %s\n", actsize, buf);     // DEBUG <
+    if ((stat = rio_writen(sfd, buf, strlen(buf))) == -1) goto Error;
     size_t flow = 0;
-    if ((flow = forward(&crio, sfd, method)) == -1) {
-        close(sfd);
-        printf("<4> forward client to server Error, Abort\n");   // DEBUG <
-        return;
+    long bodysize = 0;
+    while (strcmp(buf, "\r\n")) {
+        if ((stat = rio_readlineb(&crio, buf, MAXLINE)) == -1) goto Error;
+        if (stat == 0) goto Error;
+        parse_cnt_len(buf, &bodysize);
+        if ((stat = rio_writen(sfd, buf, stat)) == -1) goto Error;
     }
-    printf("---- Complete forward client to server -----\n");   // DEBUG <
-    flow = 0;
-    rio_readinitb(&srio, sfd);
-    if ((flow = forward(&srio, cfd, NULL)) == -1) {
-        close(sfd);
-        printf("<5> forward server to client Error, Abort\n");   // DEBUG <
-        return;
+    char body[MAXBUF];
+    size_t readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
+    while (bodysize > 0) {
+        if ((stat = rio_readnb(&crio, body, readsize)) == -1) goto Error;
+        if (stat == 0) break;
+        if((stat = rio_writen(sfd, body, stat)) == -1) goto Error;
+        bodysize -= stat;
+        readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
     }
+    if (stat == -1) goto Error;
 
+    /* Get Http response from server and forward to client */
+    flow = 0; 
+    rio_readinitb(&srio, sfd);
+    if ((stat = rio_readlineb(&srio, buf, MAXLINE)) == -1) goto Error;
+    while (strcmp(buf, "\r\n")) {
+        parse_cnt_len(buf, &bodysize);
+        if ((stat = rio_writen(cfd, buf, stat)) == -1) goto Error;
+        flow += stat;
+        if ((stat = rio_readlineb(&srio, buf, MAXLINE)) == -1) goto Error;
+        if (stat == 0) break;
+    }
+    if (stat == -1) goto Error;
+    if ((stat = rio_writen(cfd, "\r\n", strlen("\r\n"))) == -1) goto Error;
+    flow += 2;
+    readsize = 1;
+    while (bodysize > 0) {
+        // readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
+        if ((stat = rio_readnb(&srio, body, readsize)) == -1) break;
+        if(stat == 0) break;
+        if ((stat = rio_writen(cfd, body, readsize)) == -1) break;
+        bodysize -= stat;
+        flow += stat;
+        if(readsize > stat) break;
+    }
+    if (stat == -1) goto Error;
     close(sfd);
     char log[MAXLINE];
     format_log_entry(log, csock, uri, flow);
+    P(&mutex);
     printf("%s\n", log);
+    V(&mutex);
+    return;
+
+Error:
+    close(sfd);
+    printf("ERROR\n");
     return;
 }
 
@@ -154,17 +177,17 @@ void doit(int cfd, struct sockaddr_in *csock)
  */
 size_t forward(rio_t *criop, int sfd, char *method)
 {
-    int stat = 1;
-    size_t actsize = 0, flow = 0;
+    ssize_t stat = 1;
+    size_t flow = 0;
     long bodysize = 0; 
     char buf[MAXLINE], body[MAXBUF];
     while (1) {
-        if ((stat = Rio_readlineb_w(criop, buf, MAXLINE - 1, &actsize)) == -1) return -1;
-        if (actsize == 0 || stat == 0) break;
-        printf("[%ld] %s",actsize, buf);    // DEBUG <
+        if ((stat = rio_readlineb(criop, buf, MAXLINE - 1)) == -1) return -1;
+        if (stat == 0) break;
+        printf("[%ld] %s", stat, buf);    // DEBUG <
         parse_cnt_len(buf, &bodysize);
-        if ((stat = Rio_writen_w(sfd, buf, actsize, &actsize)) != 1) return -1;
-        flow += actsize;
+        if ((stat = rio_writen(sfd, buf, strlen(buf))) == -1) return -1;
+        flow += stat;
         if (strcmp(buf, "\r\n") == 0) break;
     }
     printf("--- Header Forwarding Complete ----\n");
@@ -176,15 +199,15 @@ size_t forward(rio_t *criop, int sfd, char *method)
     if (hasbody) {
         printf("Has body\n");
         while (1) {
-            if ((stat = Rio_readnb_w(criop, body, MAXBUF - 1, &actsize)) == -1) return -1;
-            if (actsize == 0) break;
-            if ((stat = Rio_writen_w(sfd, body, actsize, &actsize)) != 1) return -1;
-            body[actsize] = '\0';                  // DEBUG <
-            printf("[%ld] %s", actsize, body);    // DEBUG <
-            flow += actsize;
-            if (actsize < MAXBUF - 1) break;
+            if ((stat = rio_readnb(criop, body, MAXBUF - 1)) == -1) return -1;
+            if (stat == 0) break;
+            if ((stat = rio_writen(sfd, body, strlen(body))) == -1) return -1;
+            body[stat] = '\0';                  // DEBUG <
+            printf("[%ld] %s", stat, body);    // DEBUG <
+            flow += stat;
+            if (stat < MAXBUF - 1) break;
         }
-        if ((stat = Rio_writen_w(sfd, "\r\n", strlen("\r\n"), &actsize)) != 1)
+        if ((stat = rio_writen(sfd, "\r\n", strlen("\r\n"))) == -1)
             return -1;
         return flow;
     }
@@ -192,16 +215,16 @@ size_t forward(rio_t *criop, int sfd, char *method)
     printf("<Body>\n");
     while (bodysize > 0) {
         readsize = MAXBUF - 1 > bodysize ? bodysize : MAXBUF - 1;
-        if ((stat = Rio_readnb_w(criop, body, readsize, &actsize)) == -1) return -1;
-        if (actsize == 0) break;
-        if ((stat = Rio_writen_w(sfd, body, actsize, &actsize)) != 1) return -1;
-        body[actsize] = '\0';               // DEBUG <
-        printf("[%ld] %s", actsize, body); // DEBUG <
-        bodysize -= actsize;
-        flow += actsize;
-        if (actsize < readsize) break;
+        if ((stat = rio_readnb(criop, body, readsize)) == -1) return -1;
+        if (stat == 0) break;
+        if ((stat = rio_writen(sfd, body, strlen(body))) == -1) return -1;
+        body[stat] = '\0';               // DEBUG <
+        printf("[%ld] %s", stat, body); // DEBUG <
+        bodysize -= stat;
+        flow += stat;
+        if (stat < readsize) break;
     }
-    if ((stat = Rio_writen_w(sfd, "\r\n", strlen("\r\n"), &actsize)) != 1) return -1;
+    if ((stat = rio_writen(sfd, "\r\n", strlen("\r\n"))) == -1) return -1;
     return flow;
 }
 
